@@ -2,7 +2,9 @@ CLife - Conway's Game of Life
 =============================
 
 This is an attempt of implementation of the famous Conway's game of life.
+
 At the moment it is really simple because I started studying Common Lisp recently, and I wrote this program in order to improve my programming skills.
+
 Nevertheless I've planned to modify the output destination (now it prints on the terminal) by creating a graphical interface through the use of OpenGL.
 
 
