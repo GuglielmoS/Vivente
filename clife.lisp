@@ -17,33 +17,30 @@
 (defparameter *dead-cell* #\space)
 
 (defun gen-random-world (&optional (world-size *default-world-size*))
-  (let* ((world (make-array world-size))
-	(dim-x (car world-size))
-	(dim-y (cadr world-size)))
-    (loop for i from 0 below dim-x do
-	 (loop for j from 0 below dim-y do
-	      (setf (aref world i j) (nth (random 2) '(:alive :dead)))))
+  (let ((world (make-array world-size :element-type 'bit)))
+    (destructuring-bind (dim-x dim-y) world-size
+      (loop for i from 0 below dim-x do
+	   (loop for j from 0 below dim-y do
+		(setf (aref world i j) (random 2)))))
     world))
 
 (defun alive-neighbors (world pos)
-  (let* ((dim (array-dimensions world))
-	(dim-x (car dim))
-	(dim-y (cadr dim))
-	(x (car pos))
-	(y (cadr pos))
-	(to-check (list (list (mod (1- x) dim-x) (mod (1- y) dim-y))
-			(list (mod (1- x) dim-x) (mod y dim-y))
-			(list (mod (1- x) dim-x) (mod (1+ y) dim-y))
-			(list x (mod (1- y) dim-y))
-			(list x (mod (1+ y) dim-y))
-			(list (mod (1+ x) dim-x) (mod (1- y) dim-y))
-			(list (mod (1+ x) dim-x) y)
-			(list (mod (1+ x) dim-x) (mod (1+ y) dim-y)))))
-    (length (remove-if (lambda (pos)
-			 (if (eq (aref world (car pos) (cadr pos)) :dead)
-			     T
-			     nil))
-		       to-check))))
+  (destructuring-bind (dim-x dim-y x y) (append (array-dimensions world) pos)
+    (let ((to-check (list 
+		    (list (mod (1- x) dim-x) (mod (1- y) dim-y))
+		     (list (mod (1- x) dim-x) (mod y dim-y))
+		     (list (mod (1- x) dim-x) (mod (1+ y) dim-y))
+		     (list x (mod (1- y) dim-y))
+		     (list x (mod (1+ y) dim-y))
+		     (list (mod (1+ x) dim-x) (mod (1- y) dim-y))
+		     (list (mod (1+ x) dim-x) y)
+		     (list (mod (1+ x) dim-x) (mod (1+ y) dim-y)))))
+      (length (remove-if
+	       (lambda (pos)
+		 (if (eql (aref world (car pos) (cadr pos)) 0)
+		     T
+		     nil))
+	       to-check)))))
 
 (defun next-generation (world)
   (let* ((dim (array-dimensions world))
@@ -52,15 +49,11 @@
 	(nw (make-array dim)))
     (loop for i from 0 below dim-x do 
 	 (loop for j from 0 below dim-y do
-	      (let* ((cur-state (aref world i j))
-		     (an (alive-neighbors world (list i j))))
-		(if (eq cur-state :dead)
-		    (if (eq an 3)
-			(setf (aref nw i j) :alive)
-			(setf (aref nw i j) :dead))
-		    (if (or (eq an 2) (eq an 3))
-			(setf (aref nw i j) :alive)
-			(setf (aref nw i j) :dead))))))
+	      (let ((cur-state (aref world i j))
+		    (an (alive-neighbors world (list i j))))
+		(if (eq cur-state 0)
+		    (setf (aref nw i j) (if (eq an 3) 1 0))
+		    (setf (aref nw i j) (if (or (eq an 2) (eq an 3)) 1 0))))))
     nw))
 
 (defun print-world (world)
@@ -71,7 +64,7 @@
 	 (fresh-line)
 	 (loop for j from 0 below dim-y do
 	      (let ((cur-cell (aref world i j)))
-		(if (eql cur-cell :alive)
+		(if (eql cur-cell 1)
 		    (princ *alive-cell*)
 		    (princ *dead-cell*)))))))
 
