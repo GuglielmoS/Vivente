@@ -17,43 +17,45 @@
 (defparameter *alive-cell* #\.)
 (defparameter *dead-cell* #\space)
 
+(defun range (end)
+  "Returns all the natural numbers before 'end'."
+  (loop for i below end collect i))
+
 (defun gen-random-world (&optional (world-size *default-world-size*))
   "Generates a random world with the preferred size. 
    The data structure returned is a bidimensional array and the default size
    is taken from the global variable *default-world-size*."
   (let ((world (make-array world-size :element-type 'bit)))
     (destructuring-bind (dim-x dim-y) world-size
-      (loop for i from 0 below dim-x do
-	   (loop for j from 0 below dim-y do
+      (loop for i in (range dim-x) do
+	   (loop for j in (range dim-y) do
 		(setf (aref world i j) (random 2)))))
     world))
 
-(defun alive-neighbors (world pos)
-  "Returns the number of neighbors of the cell located at 'pos'."
+(defun alive-neighbours (world pos)
+  "Returns the number of neighbours of the cell located at 'pos'.
+   Since that the world is represented as a torus the sides are connected."
   (destructuring-bind (dim-x dim-y x y) (append (array-dimensions world) pos)
-    (let ((to-check (list 
-		    (list (mod (1- x) dim-x) (mod (1- y) dim-y))
-		     (list (mod (1- x) dim-x) (mod y dim-y))
-		     (list (mod (1- x) dim-x) (mod (1+ y) dim-y))
-		     (list x (mod (1- y) dim-y))
-		     (list x (mod (1+ y) dim-y))
-		     (list (mod (1+ x) dim-x) (mod (1- y) dim-y))
-		     (list (mod (1+ x) dim-x) y)
-		     (list (mod (1+ x) dim-x) (mod (1+ y) dim-y)))))
-      (length 
-       (remove-if 
-	       (lambda (pos) 
-		 (if (eql (aref world (car pos) (cadr pos)) 0) T nil))
-	       to-check)))))
+    (labels ((neighbours (x y)
+	       (let ((acc nil))
+		 (dolist (dx '(-1 0 +1))
+		   (dolist (dy '(-1 0 +1))
+		     (when (not (and (zerop dx) (zerop dy)))
+		       (push (cons (mod (+ x dx) dim-x) (mod (+ y dy) dim-y)) acc))))
+		 acc)))
+      (length (remove-if 
+	       (lambda (pos)
+		 (if (eql (aref world (car pos) (cdr pos)) 0) T nil))
+	       (neighbours x y))))))
 
 (defun next-generation (world)
   "Returns the next generation of the world passed as argoument."
   (destructuring-bind (dim-x dim-y) (array-dimensions world)
     (let ((nw (make-array (list dim-x dim-y))))
-      (loop for i from 0 below dim-x do
-	   (loop for j from 0 below dim-y do
+      (loop for i in (range dim-x) do
+	   (loop for j in (range dim-y) do
 		(let ((cur-state (aref world i j))
-		      (an (alive-neighbors world (list i j))))
+		      (an (alive-neighbours world (list i j))))
 		  (if (eq cur-state 0)
 		      (setf (aref nw i j) (if (eq an 3) 1 0))
 		      (setf (aref nw i j) (if (or (eq an 2) (eq an 3)) 1 0))))))
@@ -62,9 +64,9 @@
 (defun print-world (world)
   "Prints the world to the terminal."
   (destructuring-bind (dim-x dim-y) (array-dimensions world)
-    (loop for i from 0 below dim-x do
+    (loop for i in (range dim-x) do
 	 (fresh-line)
-	 (loop for j from 0 below dim-y do
+	 (loop for j in (range dim-y) do
 	      (let ((cur-cell (aref world i j)))
 		(if (eql cur-cell 1)
 		    (princ *alive-cell*)
@@ -83,4 +85,3 @@
 (defun evolve ()
   "Starts the evolution of a random world."
   (life-loop (gen-random-world)))
-
