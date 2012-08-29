@@ -4,7 +4,7 @@
 ;; Implementation of the Conway's Game of Life
 ;;
 ;; If you want to try it you should load the file and call the function
-;; 'evolve':
+;; 'run':
 ;; > (run)
 ;;
 ;; For changing the size of world you should modify the *default-world-size*
