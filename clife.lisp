@@ -5,17 +5,16 @@
 ;;
 ;; If you want to try it you should load the file and call the function
 ;; 'evolve':
-;; > (evolve)
+;; > (run)
 ;;
-;; If you want to change the size of world or the time interval between
-;; a generation and another one, you can modify the parameter below.
+;; For changing the size of world you should modify the *default-world-size*
+;; parameter.
 ;;
 ;; Copyleft by GuglielmoS
 
-(defparameter *default-world-size* '(20 70))
-(defparameter *update-interval* 0.1)
-(defparameter *alive-cell* #\.)
-(defparameter *dead-cell* #\space)
+(asdf:operate 'asdf:load-op :cl-glut)
+
+(defparameter *default-world-size* '(200 200))
 
 (defun range (end)
   "Returns all the natural numbers before 'end'."
@@ -33,8 +32,8 @@
     world))
 
 (defun alive-neighbours (world pos)
-  "Returns the number of neighbours of the cell located at 'pos'.
-   Since that the world is represented as a torus the sides are connected."
+  "Returns the number of alive neighbours of the cell located at 'pos'.
+   Since that the world is represented as a torus all sides are connected."
   (destructuring-bind (dim-x dim-y x y) (append (array-dimensions world) pos)
     (labels ((neighbours (x y)
 	       (let ((acc nil))
@@ -54,34 +53,65 @@
     (let ((nw (make-array (list dim-x dim-y))))
       (loop for i in (range dim-x) do
 	   (loop for j in (range dim-y) do
-		(let ((cur-state (aref world i j))
+		  (let ((cur-state (aref world i j))
 		      (an (alive-neighbours world (list i j))))
 		  (if (eq cur-state 0)
 		      (setf (aref nw i j) (if (eq an 3) 1 0))
 		      (setf (aref nw i j) (if (or (eq an 2) (eq an 3)) 1 0))))))
       nw)))
 
-(defun print-world (world)
-  "Prints the world to the terminal."
-  (destructuring-bind (dim-x dim-y) (array-dimensions world)
-    (loop for i in (range dim-x) do
-	 (fresh-line)
-	 (loop for j in (range dim-y) do
-	      (let ((cur-cell (aref world i j)))
-		(if (eql cur-cell 1)
-		    (princ *alive-cell*)
-		    (princ *dead-cell*)))))))
+;; GUI PART
 
-(let ((generation 0))
-  (defun life-loop (world)
-    "Shows the current world and jump to the next generation."
-    (ext:run-program "clear")
-    (format t "Generation: ~a" generation)
-    (print-world world)
-    (sleep *update-interval*)
-    (incf generation)
-    (life-loop (next-generation world))))
+(defclass gl-window (glut:window)
+  ((cells :accessor cells-of :initarg :cells))
+  (:default-initargs 
+   :width 400 :height 300
+   :title "Conway's Game of Life"
+   :mode '(:double :rgb)))
 
-(defun evolve ()
-  "Starts the evolution of a random world."
-  (life-loop (gen-random-world)))
+(defmethod glut:display-window :before ((w gl-window))
+  (gl:clear-color 0 0 0 0)
+  (gl:matrix-mode :projection)
+  (gl:load-identity)
+  (let ((cells (cells-of w)))
+    (gl:ortho 0 (array-dimension cells 1)  0 (array-dimension cells 0) -1 1)))
+
+(defun render-cell (x y cell)
+  "Render a cell onto the window with the proper color."
+  (flet ((draw-cell (x y)
+	   (gl:with-pushed-matrix
+	       (gl:translate x y 0)
+	     (gl:with-primitive :points
+	       (gl:vertex x y 0)))))
+    (case cell
+      (1 (gl:color 1 0 0)
+	   (draw-cell x y))
+      (0 (gl:color 0.0 0.0 0.0)
+	      (draw-cell x y)))))
+
+(defmethod glut:display ((w gl-window))
+  "Draws the current world on the window."
+  (gl:clear :color-buffer)
+  (let* ((cells (cells-of w))
+	 (w (array-dimension cells 1))
+	 (h (array-dimension cells 0)))
+    (loop for j below h
+       do (loop for i below w
+	     do (render-cell i j (aref cells j i)))))
+  (glut:swap-buffers))
+
+(defmethod glut:idle ((w gl-window))
+  "Steps to the next generation."
+  (setf (cells-of w) (next-generation (cells-of w)))
+  (glut:post-redisplay))
+
+(defmethod glut:keyboard ((w gl-window) key x y)
+  "Handles the keyboard interaction."
+  (case key
+    (#\Escape (glut:destroy-current-window))))
+
+(defun run ()
+  "Opens a window and starts the evolution of a random world." 
+  (glut:display-window
+   (make-instance 'gl-window
+		  :cells (gen-random-world))))
