@@ -7,25 +7,33 @@ At the moment it is really simple because I started studying Common Lisp recentl
 Use
 ---
 
-If you want to try it you should load the file and call the function 'run':
+Implementation of the Conway's Game of Life  
 
-For instance, if you type this:
-> (run)
+If you want to try it you should load the file and call the function 'run'.  
+Here are some examples of use:  
 
-It should starts the evolution of a random world which has the 
-properties defined in the source.
+> (run)            ;; run the evolution of a world of predefined size  
+> (run '(100 100)) ;; run the evolution of a 100x100 world  
+
+In the case that you want to see the evolution to proceed slowly you can
+modify the update interval by changing the value of the respective parameter.  
+For changing the size of the world, instead, you should modify the 
+*default-world-size* parameter or call the 'run' function with a list of two
+items as argoument, each representing the width and the height respectively.  
+An example of the latest use can be seen in the examples presented over here.  
 
 Parameters
 ----------
 
-The parameters which can be modified are:  
-* the size of the world  
-* the update interval between each generation  
-* the characters used for representing alive and dead cells   
+The parameters which can be modified are the following:  
+* size of the world  
+* update interval between each generation  
+* window's size  
 
 Dependencies
 ------------
-* cl-opengl
-* cl-glut
-* cl-glu
+* asdf  
+* cl-opengl  
+* cl-glut  
+* cl-glu  
 

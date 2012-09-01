@@ -4,17 +4,26 @@
 ;; Implementation of the Conway's Game of Life
 ;;
 ;; If you want to try it you should load the file and call the function
-;; 'run':
-;; > (run)
+;; 'run'.
+;; Here are some examples of use:
 ;;
-;; For changing the size of world you should modify the *default-world-size*
-;; parameter.
+;; > (run)                  ;; run the evolution of a world of predefined size
+;; > (run '(100 100)) ;; run the evolution of a 100x100 world
+;;
+;; In the case that you want to see the evolution to proceed slowly you can
+;; modify the update interval by changing the value of the respective parameter.
+;; For changing the size of the world, instead, you should modify the 
+;; *default-world-size* parameter or call the 'run' function with a list of two
+;; items as argoument, each representing the width and the height respectively.
+;; An example of the latest use can be seen in the examples presented over here.
 ;;
 ;; Copyleft by GuglielmoS
 
 (asdf:operate 'asdf:load-op :cl-glut)
 
-(defparameter *default-world-size* '(200 200))
+(defparameter *default-world-size* '(150 150))
+(defparameter *window-size* '(400 400))
+(defparameter *update-interval* .05)
 
 (defun range (end)
   "Returns all the natural numbers before 'end'."
@@ -25,49 +34,50 @@
    The data structure returned is a bidimensional array and the default size
    is taken from the global variable *default-world-size*."
   (let ((world (make-array world-size :element-type 'bit)))
-    (destructuring-bind (dim-x dim-y) world-size
-      (loop for i in (range dim-x) do
-	   (loop for j in (range dim-y) do
-		(setf (aref world i j) (random 2)))))
+    (destructuring-bind (dx dy) world-size
+      (dolist (x (range dx))
+	(dolist (y (range dy))
+	  (setf (aref world x y) (random 2)))))
     world))
 
 (defun alive-neighbours (world pos)
   "Returns the number of alive neighbours of the cell located at 'pos'.
-   Since that the world is represented as a torus all sides are connected."
-  (destructuring-bind (dim-x dim-y x y) (append (array-dimensions world) pos)
-    (labels ((neighbours (x y)
-	       (let ((acc nil))
-		 (dolist (dx '(-1 0 +1))
-		   (dolist (dy '(-1 0 +1))
-		     (when (not (and (zerop dx) (zerop dy)))
-		       (push (cons (mod (+ x dx) dim-x) (mod (+ y dy) dim-y)) acc))))
-		 acc)))
-      (length (remove-if 
+   Since that the world is represented as a torus, all sides are connected."
+  (destructuring-bind (dx dy x y) (append (array-dimensions world) pos)
+    (flet ((neighbours (x y)
+	     (let ((acc nil))
+	       (dolist (fx '(-1 0 +1))
+		 (dolist (fy '(-1 0 +1))
+		   (when (not (and (zerop fx) (zerop fy)))
+		     (push (cons (mod (+ x fx) dx) (mod (+ y fy) dy)) acc))))
+	       acc)))
+      (length (remove-if
 	       (lambda (pos)
 		 (if (eql (aref world (car pos) (cdr pos)) 0) T nil))
 	       (neighbours x y))))))
 
-(defun next-generation (world)
+(defun evolve (world)
   "Returns the next generation of the world passed as argoument."
-  (destructuring-bind (dim-x dim-y) (array-dimensions world)
-    (let ((nw (make-array (list dim-x dim-y))))
-      (loop for i in (range dim-x) do
-	   (loop for j in (range dim-y) do
-		  (let ((cur-state (aref world i j))
-		      (an (alive-neighbours world (list i j))))
-		  (if (eq cur-state 0)
-		      (setf (aref nw i j) (if (eq an 3) 1 0))
-		      (setf (aref nw i j) (if (or (eq an 2) (eq an 3)) 1 0))))))
+  (destructuring-bind (dx dy) (array-dimensions world)
+    (let ((nw (make-array (list dx dy))))
+      (dolist (x (range dx))
+	(dolist (y (range dy))
+	  (let ((cur-state (aref world x y))
+		(an (alive-neighbours world (list x y))))
+	    (if (eq cur-state 0)
+		(setf (aref nw x y) (if (eq an 3) 1 0))
+		(setf (aref nw x y) (if (or (eq an 2) (eq an 3)) 1 0))))))
       nw)))
 
 ;; GUI PART
 
 (defclass gl-window (glut:window)
   ((cells :accessor cells-of :initarg :cells))
-  (:default-initargs 
-   :width 400 :height 300
-   :title "Conway's Game of Life"
-   :mode '(:double :rgb)))
+  (:default-initargs
+    :width (car *window-size*) 
+    :height (cadr *window-size*)
+    :title "Conway's Game of Life"
+    :mode '(:double :rgb)))
 
 (defmethod glut:display-window :before ((w gl-window))
   (gl:clear-color 0 0 0 0)
@@ -78,31 +88,26 @@
 
 (defun render-cell (x y cell)
   "Render a cell onto the window with the proper color."
-  (flet ((draw-cell (x y)
-	   (gl:with-pushed-matrix
-	       (gl:translate x y 0)
-	     (gl:with-primitive :points
-	       (gl:vertex x y 0)))))
-    (case cell
-      (1 (gl:color 1 0 0)
-	   (draw-cell x y))
-      (0 (gl:color 0.0 0.0 0.0)
-	      (draw-cell x y)))))
+    (if (zerop cell)
+	(gl:color 0 0 0)
+	(gl:color 1 0 0))
+    (gl:with-primitive :points
+      (gl:vertex x y 0)))
 
 (defmethod glut:display ((w gl-window))
   "Draws the current world on the window."
   (gl:clear :color-buffer)
-  (let* ((cells (cells-of w))
-	 (w (array-dimension cells 1))
-	 (h (array-dimension cells 0)))
-    (loop for j below h
-       do (loop for i below w
-	     do (render-cell i j (aref cells j i)))))
+  (let ((cells (cells-of w)))
+    (destructuring-bind (dx dy) (array-dimensions cells)
+      (dolist (x (range dx))
+	(dolist (y (range dy))
+	  (render-cell x y (aref cells x y))))))
   (glut:swap-buffers))
 
 (defmethod glut:idle ((w gl-window))
   "Steps to the next generation."
-  (setf (cells-of w) (next-generation (cells-of w)))
+  (setf (cells-of w) (evolve (cells-of w)))
+  (sleep *update-interval*)
   (glut:post-redisplay))
 
 (defmethod glut:keyboard ((w gl-window) key x y)
@@ -110,8 +115,8 @@
   (case key
     (#\Escape (glut:destroy-current-window))))
 
-(defun run ()
+(defun run (&optional (world-size *default-world-size*)) 
   "Opens a window and starts the evolution of a random world." 
   (glut:display-window
    (make-instance 'gl-window
-		  :cells (gen-random-world))))
+		  :cells (gen-random-world world-size))))
