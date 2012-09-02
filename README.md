@@ -35,3 +35,6 @@ Dependencies
 * cl-glut  
 * cl-glu  
 
+Screenshot
+----------
+![Vivente image](http://postimage.org/image/7f7sskj4x/)
