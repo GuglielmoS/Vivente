@@ -1,4 +1,4 @@
-CLife - Conway's Game of Life
+Vivente - Conway's Game of Life
 =============================
 
 This is an attempt of implementation of the famous Conway's game of life.  
