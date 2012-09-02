@@ -37,4 +37,4 @@ Dependencies
 
 Screenshot
 ----------
-![Vivente image](http://s8.postimage.org/72geme0v7/screenshot.png)
+http://s8.postimage.org/72geme0v7/screenshot.png
