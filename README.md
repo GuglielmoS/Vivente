@@ -37,4 +37,4 @@ Dependencies
 
 Screenshot
 ----------
-![Vivente image](img/screenshot.png)
+![Vivente image](https://raw.github.com/GuglielmoS/Vivente/master/img/screenshot.png)
